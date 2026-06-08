@@ -1,0 +1,154 @@
+import { useState, useRef, useEffect } from 'react';
+import { useStore } from '../store/useStore';
+import { useAI } from '../hooks/useAI';
+import { useTTS } from '../hooks/useTTS';
+import { WordCard } from '../components/WordCard';
+import { SentencePanel } from '../components/SentencePanel';
+import { ArrowLeft } from 'lucide-react';
+
+export const Reader = () => {
+  const { currentBook, setView } = useStore();
+  const { translateWord, translateSentence, loading } = useAI();
+  const { speak } = useTTS();
+  
+  const [selectedWord, setSelectedWord] = useState<string | null>(null);
+  const [wordData, setWordData] = useState<any>(null);
+  const [activeWordRect, setActiveWordRect] = useState<{ top: number; left: number } | null>(null);
+  
+  const [selectedSentence, setSelectedSentence] = useState<string | null>(null);
+  const [sentenceData, setSentenceData] = useState<any>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // If we try to click on a word
+  const handleWordClick = async (e: React.MouseEvent, word: string, contextSentence: string) => {
+    e.stopPropagation();
+    const rect = (e.target as HTMLElement).getBoundingClientRect();
+    
+    // Reset sentence panel if open
+    setSelectedSentence(null);
+    setSentenceData(null);
+    
+    setSelectedWord(word);
+    setWordData(null);
+    setActiveWordRect({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+
+    if (currentBook) {
+      const data = await translateWord(word, contextSentence, currentBook.language);
+      setWordData({ ...data, contextSentence });
+    }
+  };
+
+  // Click outside to close Tooltip
+  useEffect(() => {
+    const handleClickOutside = () => setSelectedWord(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, []);
+
+  const handleSelection = async () => {
+    const selection = window.getSelection();
+    if (!selection || selection.toString().trim().length < 10) return; // Ignore small selections (probably word click)
+
+    const sentence = selection.toString().trim();
+    setSelectedSentence(sentence);
+    setSentenceData(null);
+    setSelectedWord(null); // Close word card
+
+    if (currentBook) {
+      const data = await translateSentence(sentence, sentence, currentBook.language);
+      setSentenceData(data);
+    }
+  };
+
+  if (!currentBook) return null;
+
+  // Simple splitting by paragraphs
+  const paragraphs = currentBook.content.split('\n').filter(p => p.trim().length > 0);
+
+  return (
+    <div className="max-w-3xl mx-auto p-6 pb-40 pt-12" ref={containerRef} onMouseUp={handleSelection}>
+      <button 
+        onClick={() => setView('home')}
+        className="flex items-center gap-2 mb-12 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
+      >
+        <ArrowLeft size={16} /> Back to Library
+      </button>
+
+      <div className="text-center mb-16 border-b border-gray-200 dark:border-white/10 pb-12">
+         <p className="text-[11px] uppercase tracking-[0.3em] text-amber-600 dark:text-amber-500 mb-4 font-bold">Chapter</p>
+         <h1 className="text-4xl font-serif italic text-gray-900 dark:text-white/90">{currentBook.title}</h1>
+      </div>
+
+      <div className="space-y-8 text-[1.35rem] leading-[2] text-gray-800 dark:text-gray-300 font-serif">
+        {paragraphs.map((p, pIndex) => {
+          // split keeping punctuation
+          const words = p.split(/(\b[^\s]+\b)/).filter(Boolean);
+          
+          return (
+            <p key={pIndex} className="text-justify">
+              {words.map((w, wIndex) => {
+                const isWord = /\w+/.test(w);
+                if (isWord) {
+                  return (
+                    <span 
+                      key={wIndex}
+                      onClick={(e) => handleWordClick(e, w, p)}
+                      className="cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-500/20 dark:hover:border-b-2 dark:hover:border-amber-500 hover:text-amber-900 dark:hover:text-white transition-all inline-block px-[1px] rounded-sm"
+                    >
+                      {w}
+                    </span>
+                  );
+                }
+                return <span key={wIndex}>{w}</span>;
+              })}
+            </p>
+          );
+        })}
+      </div>
+
+      {selectedWord && activeWordRect && (
+        <div style={{ position: 'absolute', top: activeWordRect.top, left: activeWordRect.left }} onClick={e => e.stopPropagation()}>
+          {loading && !wordData ? (
+             <div className="bg-white dark:bg-[#1C1C1C] p-4 rounded-xl shadow-2xl border border-gray-200 dark:border-white/20 w-48 text-center text-[10px] tracking-widest uppercase font-bold text-amber-600 dark:text-amber-500 mt-2">
+               Analyzing...
+             </div>
+          ) : wordData ? (
+            <WordCard 
+              word={wordData.word}
+              translation={wordData.translation}
+              pos={wordData.pos}
+              example={wordData.example}
+              grammarNote={wordData.grammar_note}
+              contextSentence={wordData.contextSentence}
+              bookTitle={currentBook.title}
+              language={currentBook.language}
+              onSpeak={() => speak(wordData.word, currentBook.language)}
+              onClose={() => setSelectedWord(null)}
+            />
+          ) : null}
+        </div>
+      )}
+
+      {selectedSentence && (
+         loading && !sentenceData ? (
+          <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#0D0D0D] border-t border-gray-200 dark:border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] p-8 z-50">
+            <div className="max-w-4xl mx-auto flex items-center justify-center h-32 text-[11px] tracking-[0.2em] uppercase font-bold text-amber-600 dark:text-amber-500">
+              Analyzing sentence structure...
+            </div>
+          </div>
+         ) : sentenceData ? (
+           <SentencePanel 
+             sentence={selectedSentence}
+             translation={sentenceData.translation}
+             grammarNote={sentenceData.grammar_note}
+             bookTitle={currentBook.title}
+             language={currentBook.language}
+             onSpeak={() => speak(selectedSentence, currentBook.language)}
+             onClose={() => setSelectedSentence(null)}
+           />
+         ) : null
+      )}
+    </div>
+  );
+};

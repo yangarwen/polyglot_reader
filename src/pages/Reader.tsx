@@ -82,25 +82,35 @@ export const Reader = () => {
 
       <div className="space-y-8 text-[1.35rem] leading-[2] text-gray-800 dark:text-gray-300 font-serif">
         {paragraphs.map((p, pIndex) => {
-          // split keeping punctuation
-          const words = p.split(/(\b[^\s]+\b)/).filter(Boolean);
+          let segments: any[] = [];
+          try {
+            // Use Intl.Segmenter for proper CJK support (Japanese, Chinese, etc.)
+            const segmenter = new (Intl as any).Segmenter(
+              currentBook.language === 'auto' ? undefined : currentBook.language, 
+              { granularity: 'word' }
+            );
+            segments = Array.from(segmenter.segment(p));
+          } catch (e) {
+            // Fallback for browsers that don't support Intl.Segmenter
+            const words = p.split(/(\b[^\s]+\b)/).filter(Boolean);
+            segments = words.map(w => ({ segment: w, isWordLike: /\w+/.test(w) }));
+          }
           
           return (
             <p key={pIndex} className="text-justify">
-              {words.map((w, wIndex) => {
-                const isWord = /\w+/.test(w);
-                if (isWord) {
+              {segments.map((s, wIndex) => {
+                if (s.isWordLike) {
                   return (
                     <span 
                       key={wIndex}
-                      onClick={(e) => handleWordClick(e, w, p)}
+                      onClick={(e) => handleWordClick(e, s.segment, p)}
                       className="cursor-pointer hover:bg-amber-100/50 dark:hover:bg-amber-500/20 dark:hover:border-b-2 dark:hover:border-amber-500 hover:text-amber-900 dark:hover:text-white transition-all inline-block px-[1px] rounded-sm"
                     >
-                      {w}
+                      {s.segment}
                     </span>
                   );
                 }
-                return <span key={wIndex}>{w}</span>;
+                return <span key={wIndex}>{s.segment}</span>;
               })}
             </p>
           );

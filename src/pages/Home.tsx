@@ -37,10 +37,12 @@ export const Home = () => {
   };
 
   const handlePasteSubmit = async () => {
-    if (!pasteTitle.trim() || !pasteContent.trim()) return;
+    if (!pasteContent.trim()) return;
+    
+    const finalTitle = pasteTitle.trim() || `Untitled (${new Date().toLocaleDateString()})`;
     
     const newBook = {
-      title: pasteTitle.trim(),
+      title: finalTitle,
       content: pasteContent.trim(),
       language: 'en' as const,
       lastReadDate: Date.now(),
@@ -123,7 +125,7 @@ export const Home = () => {
             
             <div className="space-y-6 overflow-y-auto pr-2 pb-2 flex-1">
               <div>
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Title</label>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-500 mb-2">Title (Optional)</label>
                 <input 
                   type="text" 
                   value={pasteTitle}
@@ -152,7 +154,7 @@ export const Home = () => {
               </button>
               <button 
                 onClick={handlePasteSubmit}
-                disabled={!pasteTitle.trim() || !pasteContent.trim()}
+                disabled={!pasteContent.trim()}
                 className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-2.5 rounded text-[10px] font-bold uppercase tracking-widest transition-colors"
               >
                 Add to Library

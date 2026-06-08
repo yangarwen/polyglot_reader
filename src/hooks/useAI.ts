@@ -18,29 +18,47 @@ export const useAI = () => {
 
   const translateWord = async (word: string, context: string, lang: string): Promise<WordTranslation> => {
     setLoading(true);
-    // Mock API call delay
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setLoading(false);
-    
-    return {
-      word,
-      translation: `Mock translation for ${word}`,
-      pos: 'Noun',
-      grammar_note: 'Masculine singular. Nominative case.',
-      example: `This is a mock example sentence with ${word}.`
-    };
+    try {
+      const response = await fetch('/api/translate-word', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ word, context, lang }),
+      });
+      if (!response.ok) throw new Error('Failed to translate word');
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return {
+        word,
+        translation: 'Error translating word',
+        pos: 'Error',
+        grammar_note: 'An error occurred while fetching the translation.',
+        example: 'N/A'
+      };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const translateSentence = async (sentence: string, context: string, lang: string): Promise<SentenceTranslation> => {
     setLoading(true);
-    // Mock API call delay
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setLoading(false);
-
-    return {
-      translation: `Mock translation for the sentence.`,
-      grammar_note: `Mock grammar structure breakdown: Subject - Verb - Object.`
-    };
+    try {
+      const response = await fetch('/api/translate-sentence', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sentence, context, lang }),
+      });
+      if (!response.ok) throw new Error('Failed to translate sentence');
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return {
+        translation: 'Error translating sentence.',
+        grammar_note: 'An error occurred while fetching the translation.'
+      };
+    } finally {
+      setLoading(false);
+    }
   };
 
   return { translateWord, translateSentence, loading };

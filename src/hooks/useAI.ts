@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { db } from '../lib/db';
+import { LanguageCode } from '../types';
 
 interface WordTranslation {
   word: string;
@@ -17,6 +19,19 @@ export const useAI = () => {
   const [loading, setLoading] = useState(false);
 
   const translateWord = async (word: string, context: string, lang: string): Promise<WordTranslation> => {
+    const saved = await db.wordCards
+      .where({ word, language: lang as LanguageCode })
+      .first();
+    if (saved) {
+      return {
+        word: saved.word,
+        translation: saved.translation,
+        pos: saved.pos,
+        grammar_note: saved.grammarNote,
+        example: saved.example,
+      };
+    }
+
     setLoading(true);
     try {
       const response = await fetch('/api/translate-word', {

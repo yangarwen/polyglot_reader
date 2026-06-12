@@ -5,11 +5,11 @@ import { GoogleGenAI, Type } from "@google/genai";
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
-  const ai = new GoogleGenAI({ 
+  const ai = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
     httpOptions: {
       headers: {
@@ -18,11 +18,19 @@ async function startServer() {
     }
   });
 
+  const wordCache = new Map<string, object>();
+
   app.post("/api/translate-word", async (req, res) => {
     try {
       const { word, context, lang } = req.body;
-      
-      const prompt = `You are a helpful language learning assistant. 
+
+      const cacheKey = `${lang}:${word.toLowerCase()}`;
+      const cached = wordCache.get(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const prompt = `You are a helpful language learning assistant.
 Translate the word "${word}" based on its context: "${context}".
 The source language is ${lang}.
 Return a JSON object with the following strictly defined fields:
@@ -53,7 +61,9 @@ Return a JSON object with the following strictly defined fields:
 
       const text = response.text;
       if (text) {
-        res.json(JSON.parse(text));
+        const result = JSON.parse(text);
+        wordCache.set(cacheKey, result);
+        res.json(result);
       } else {
         throw new Error("Empty response from AI");
       }

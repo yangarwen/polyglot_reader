@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Exported Cloud Run service config — contains secrets in plaintext
+service.yaml

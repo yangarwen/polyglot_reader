@@ -5,7 +5,7 @@ import { useTTS } from '../hooks/useTTS';
 import { WordCard } from '../components/WordCard';
 import { SentencePanel } from '../components/SentencePanel';
 import { db } from '../lib/db';
-import { ArrowLeft, Pencil, Check, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Check, X, Trash2 } from 'lucide-react';
 
 export const Reader = () => {
   const { currentBook, setView } = useStore();
@@ -20,11 +20,29 @@ export const Reader = () => {
   const [sentenceData, setSentenceData] = useState<any>(null);
 
   const [sourceName, setSourceName] = useState(currentBook?.sourceName ?? currentBook?.title ?? '');
+  const [title, setTitle] = useState(currentBook?.title ?? '');
 
   const [editing, setEditing] = useState(false);
   const [draftContent, setDraftContent] = useState(currentBook?.content ?? '');
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const commitTitle = async () => {
+    if (!currentBook?.id) return;
+    const trimmed = title.trim();
+    if (!trimmed) { setTitle(currentBook.title); return; } // don't allow an empty title
+    setTitle(trimmed);
+    if (trimmed !== currentBook.title) {
+      await db.books.update(currentBook.id, { title: trimmed });
+      currentBook.title = trimmed;
+    }
+  };
+
+  const deleteBook = async () => {
+    if (currentBook?.id) await db.books.delete(currentBook.id);
+    setView('home');
+  };
 
   const startEditing = () => {
     setDraftContent(currentBook?.content ?? '');
@@ -124,19 +142,51 @@ export const Reader = () => {
               <Check size={14} /> 完成
             </button>
           </div>
+        ) : confirmingDelete ? (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">刪除整本書?</span>
+            <button
+              onClick={deleteBook}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white transition-colors"
+            >
+              <Trash2 size={14} /> 確定刪除
+            </button>
+            <button
+              onClick={() => setConfirmingDelete(false)}
+              className="px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+            >
+              取消
+            </button>
+          </div>
         ) : (
-          <button
-            onClick={(e) => { e.stopPropagation(); startEditing(); }}
-            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
-          >
-            <Pencil size={14} /> 編輯內文
-          </button>
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={startEditing}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
+            >
+              <Pencil size={14} /> 編輯內文
+            </button>
+            <button
+              onClick={() => setConfirmingDelete(true)}
+              className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-red-500 transition-colors"
+            >
+              <Trash2 size={14} /> 刪除
+            </button>
+          </div>
         )}
       </div>
 
       <div className="text-center mb-16 border-b border-gray-200 dark:border-white/10 pb-12">
          <p className="text-[11px] uppercase tracking-[0.3em] text-amber-600 dark:text-amber-500 mb-4 font-bold">Chapter</p>
-         <h1 className="text-4xl font-serif italic text-gray-900 dark:text-white/90">{currentBook.title}</h1>
+         <input
+           value={title}
+           onChange={(e) => setTitle(e.target.value)}
+           onBlur={commitTitle}
+           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+           onClick={(e) => e.stopPropagation()}
+           title="點擊編輯標題"
+           className="w-full text-center text-4xl font-serif italic text-gray-900 dark:text-white/90 bg-transparent outline-none rounded hover:bg-amber-50/50 dark:hover:bg-amber-500/10 focus:bg-amber-50/60 dark:focus:bg-amber-500/15 transition-colors"
+         />
          <div className="mt-6 flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest text-gray-500 font-bold">
            <span>Source</span>
            <input

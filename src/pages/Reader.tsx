@@ -5,7 +5,7 @@ import { useTTS } from '../hooks/useTTS';
 import { WordCard } from '../components/WordCard';
 import { SentencePanel } from '../components/SentencePanel';
 import { db } from '../lib/db';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Pencil, Check, X } from 'lucide-react';
 
 export const Reader = () => {
   const { currentBook, setView } = useStore();
@@ -21,7 +21,27 @@ export const Reader = () => {
 
   const [sourceName, setSourceName] = useState(currentBook?.sourceName ?? currentBook?.title ?? '');
 
+  const [editing, setEditing] = useState(false);
+  const [draftContent, setDraftContent] = useState(currentBook?.content ?? '');
+
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const startEditing = () => {
+    setDraftContent(currentBook?.content ?? '');
+    setSelectedWord(null);
+    setSelectedSentence(null);
+    setEditing(true);
+  };
+
+  const cancelEditing = () => setEditing(false);
+
+  const saveContent = async () => {
+    if (currentBook?.id && draftContent !== currentBook.content) {
+      await db.books.update(currentBook.id, { content: draftContent });
+      currentBook.content = draftContent;
+    }
+    setEditing(false);
+  };
 
   const commitSourceName = async () => {
     if (!currentBook?.id) return;
@@ -60,6 +80,7 @@ export const Reader = () => {
   }, []);
 
   const handleSelection = async () => {
+    if (editing) return; // No sentence translation while editing the text
     const selection = window.getSelection();
     if (!selection || selection.toString().trim().length < 10) return; // Ignore small selections (probably word click)
 
@@ -81,12 +102,37 @@ export const Reader = () => {
 
   return (
     <div className="max-w-3xl mx-auto p-6 pb-40 pt-12" ref={containerRef} onMouseUp={handleSelection}>
-      <button 
-        onClick={() => setView('home')}
-        className="flex items-center gap-2 mb-12 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
-      >
-        <ArrowLeft size={16} /> Back to Library
-      </button>
+      <div className="flex items-center justify-between mb-12">
+        <button
+          onClick={() => setView('home')}
+          className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
+        >
+          <ArrowLeft size={16} /> Back to Library
+        </button>
+        {editing ? (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={cancelEditing}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+            >
+              <X size={14} /> 取消
+            </button>
+            <button
+              onClick={saveContent}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-bold uppercase tracking-widest bg-amber-600 hover:bg-amber-500 text-white transition-colors"
+            >
+              <Check size={14} /> 完成
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); startEditing(); }}
+            className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-amber-600 dark:hover:text-amber-500 transition-colors"
+          >
+            <Pencil size={14} /> 編輯內文
+          </button>
+        )}
+      </div>
 
       <div className="text-center mb-16 border-b border-gray-200 dark:border-white/10 pb-12">
          <p className="text-[11px] uppercase tracking-[0.3em] text-amber-600 dark:text-amber-500 mb-4 font-bold">Chapter</p>
@@ -104,6 +150,16 @@ export const Reader = () => {
          </div>
       </div>
 
+      {editing ? (
+        <textarea
+          value={draftContent}
+          onChange={(e) => setDraftContent(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          autoFocus
+          className="w-full min-h-[60vh] bg-transparent border border-gray-200 dark:border-white/15 focus:border-amber-500 outline-none rounded-lg p-6 text-[1.35rem] leading-[2] text-gray-800 dark:text-gray-300 font-serif resize-y"
+          placeholder="在此編輯內文……"
+        />
+      ) : (
       <div className="space-y-8 text-[1.35rem] leading-[2] text-gray-800 dark:text-gray-300 font-serif">
         {paragraphs.map((p, pIndex) => {
           let segments: any[] = [];
@@ -140,6 +196,7 @@ export const Reader = () => {
           );
         })}
       </div>
+      )}
 
       {selectedWord && activeWordRect && (
         <div style={{ position: 'absolute', top: activeWordRect.top, left: activeWordRect.left }} onClick={e => e.stopPropagation()}>

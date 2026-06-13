@@ -9,3 +9,6 @@ coverage/
 
 # Exported Cloud Run service config — contains secrets in plaintext
 service.yaml
+
+# Claude Code local settings (personal machine config — keep launch.json shared)
+.claude/settings.local.json

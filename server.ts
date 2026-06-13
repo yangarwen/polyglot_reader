@@ -44,7 +44,7 @@ Return a JSON object with the following strictly defined fields:
 - "example_zh": The Traditional Chinese translation of that example sentence.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -92,7 +92,7 @@ Return a JSON object with:
 - "grammar_note": A breakdown of the grammatical structure or key phrasing points in Traditional Chinese.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",

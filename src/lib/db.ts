@@ -13,6 +13,24 @@ export class AppDatabase extends Dexie {
       wordCards: '++id, word, language, createdAt, status',
       sentenceNotes: '++id, language, createdAt, status'
     });
+    this.version(2).stores({
+      books: '++id, title, language, lastReadDate',
+      wordCards: '++id, word, language, createdAt, status, [word+language]',
+      sentenceNotes: '++id, language, createdAt, status'
+    }).upgrade(async (tx) => {
+      await tx.table('books').toCollection().modify((book: Book) => {
+        book.type ??= 'text';
+        book.sourceName ??= book.title;
+      });
+      await tx.table('wordCards').toCollection().modify((card: WordCard) => {
+        card.sourceName ??= card.bookTitle;
+        card.synced ??= false;
+      });
+      await tx.table('sentenceNotes').toCollection().modify((note: SentenceNote) => {
+        note.sourceName ??= note.bookTitle;
+        note.synced ??= false;
+      });
+    });
   }
 }
 

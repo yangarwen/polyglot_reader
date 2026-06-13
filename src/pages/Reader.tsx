@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type MouseEvent } from 'react';
 import { useStore } from '../store/useStore';
 import { useAI } from '../hooks/useAI';
 import { useTTS } from '../hooks/useTTS';
 import { WordCard } from '../components/WordCard';
 import { SentencePanel } from '../components/SentencePanel';
+import { db } from '../lib/db';
 import { ArrowLeft } from 'lucide-react';
 
 export const Reader = () => {
@@ -18,10 +19,22 @@ export const Reader = () => {
   const [selectedSentence, setSelectedSentence] = useState<string | null>(null);
   const [sentenceData, setSentenceData] = useState<any>(null);
 
+  const [sourceName, setSourceName] = useState(currentBook?.sourceName ?? currentBook?.title ?? '');
+
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const commitSourceName = async () => {
+    if (!currentBook?.id) return;
+    const trimmed = sourceName.trim() || currentBook.title;
+    setSourceName(trimmed);
+    if (trimmed !== currentBook.sourceName) {
+      await db.books.update(currentBook.id, { sourceName: trimmed });
+      currentBook.sourceName = trimmed;
+    }
+  };
+
   // If we try to click on a word
-  const handleWordClick = async (e: React.MouseEvent, word: string, contextSentence: string) => {
+  const handleWordClick = async (e: MouseEvent, word: string, contextSentence: string) => {
     e.stopPropagation();
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     
@@ -78,6 +91,17 @@ export const Reader = () => {
       <div className="text-center mb-16 border-b border-gray-200 dark:border-white/10 pb-12">
          <p className="text-[11px] uppercase tracking-[0.3em] text-amber-600 dark:text-amber-500 mb-4 font-bold">Chapter</p>
          <h1 className="text-4xl font-serif italic text-gray-900 dark:text-white/90">{currentBook.title}</h1>
+         <div className="mt-6 flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+           <span>Source</span>
+           <input
+             value={sourceName}
+             onChange={(e) => setSourceName(e.target.value)}
+             onBlur={commitSourceName}
+             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+             onClick={(e) => e.stopPropagation()}
+             className="bg-transparent border-b border-dashed border-gray-300 dark:border-white/20 focus:border-amber-500 outline-none text-center font-serif italic normal-case tracking-normal text-sm text-gray-700 dark:text-gray-300 min-w-[12rem]"
+           />
+         </div>
       </div>
 
       <div className="space-y-8 text-[1.35rem] leading-[2] text-gray-800 dark:text-gray-300 font-serif">
@@ -129,9 +153,11 @@ export const Reader = () => {
               translation={wordData.translation}
               pos={wordData.pos}
               example={wordData.example}
+              exampleZh={wordData.example_zh}
               grammarNote={wordData.grammar_note}
               contextSentence={wordData.contextSentence}
               bookTitle={currentBook.title}
+              sourceName={sourceName}
               language={currentBook.language}
               onSpeak={() => speak(wordData.word, currentBook.language)}
               onClose={() => setSelectedWord(null)}
@@ -153,6 +179,7 @@ export const Reader = () => {
              translation={sentenceData.translation}
              grammarNote={sentenceData.grammar_note}
              bookTitle={currentBook.title}
+             sourceName={sourceName}
              language={currentBook.language}
              onSpeak={() => speak(selectedSentence, currentBook.language)}
              onClose={() => setSelectedSentence(null)}

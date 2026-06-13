@@ -8,6 +8,7 @@ interface WordTranslation {
   pos: string;
   grammar_note: string;
   example: string;
+  example_zh?: string;
 }
 
 interface SentenceTranslation {
@@ -29,6 +30,7 @@ export const useAI = () => {
         pos: saved.pos,
         grammar_note: saved.grammarNote,
         example: saved.example,
+        example_zh: saved.exampleZh,
       };
     }
 

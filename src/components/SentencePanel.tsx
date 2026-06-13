@@ -8,12 +8,14 @@ interface SentencePanelProps {
   translation: string;
   grammarNote: string;
   bookTitle: string;
-  language: LanguageCode;
+  sourceName: string;
+  page?: number;
+  language: LanguageCode | 'auto';
   onSpeak: () => void;
   onClose: () => void;
 }
 
-export const SentencePanel = ({ sentence, translation, grammarNote, bookTitle, language, onSpeak, onClose }: SentencePanelProps) => {
+export const SentencePanel = ({ sentence, translation, grammarNote, bookTitle, sourceName, page, language, onSpeak, onClose }: SentencePanelProps) => {
   const [saved, setSaved] = useState(false);
 
   const handleSave = async () => {
@@ -22,9 +24,12 @@ export const SentencePanel = ({ sentence, translation, grammarNote, bookTitle, l
       translation,
       grammarNote,
       bookTitle,
+      sourceName,
+      page,
       language,
       createdAt: Date.now(),
-      status: 'new'
+      status: 'new',
+      synced: false
     });
     setSaved(true);
   };

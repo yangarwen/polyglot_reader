@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../lib/db';
 import { useStore } from '../store/useStore';
@@ -12,15 +12,18 @@ export const Home = () => {
   const [pasteTitle, setPasteTitle] = useState('');
   const [pasteContent, setPasteContent] = useState('');
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (file.name.endsWith('.txt')) {
       const text = await file.text();
+      const title = file.name.replace('.txt', '');
       const newBook = {
-        title: file.name.replace('.txt', ''),
+        title,
+        type: 'text' as const,
         content: text,
+        sourceName: title,
         language: 'en' as const, // Defaulting to en for now
         lastReadDate: Date.now(),
         progress: 0
@@ -43,7 +46,9 @@ export const Home = () => {
     
     const newBook = {
       title: finalTitle,
+      type: 'text' as const,
       content: pasteContent.trim(),
+      sourceName: finalTitle,
       language: 'en' as const,
       lastReadDate: Date.now(),
       progress: 0

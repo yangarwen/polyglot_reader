@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
@@ -34,11 +35,13 @@ async function startServer() {
 Translate the word "${word}" based on its context: "${context}".
 The source language is ${lang}.
 Return a JSON object with the following strictly defined fields:
-- "word": The original word.
+- "word": The dictionary form (lemma) of the word. If it is an inflected/conjugated form, return the base form.
 - "translation": The translation in Traditional Chinese.
-- "pos": The part of speech.
-- "grammar_note": A brief grammar note (e.g., gender, case, conjugation).
-- "example": A short example sentence using the word in ${lang} and its translation in Chinese.`;
+- "pos": The part of speech, using the standard abbreviation convention of the source language:
+  Japanese: 名・動・形・副・助 / Korean: 명사・동사・형용사・부사 / Italian, Spanish, French, Portuguese: s.m./s.f./v./agg./avv. / German: s.m./s.f./s.n./v./adj./adv. / Czech: s.m./s.f./s.n./v./adj. / Russian: сущ./гл./прил./нар. / Other languages: standard English abbreviations (n./v./adj./adv.)
+- "grammar_note": A brief grammar note in Traditional Chinese (e.g., gender, case, conjugation).
+- "example": A short example sentence using the word, in ${lang} only. Prefer reusing the given context sentence if it is a complete sentence.
+- "example_zh": The Traditional Chinese translation of that example sentence.`;
 
       const response = await ai.models.generateContent({
         model: "gemini-3.5-flash",
@@ -53,8 +56,9 @@ Return a JSON object with the following strictly defined fields:
               pos: { type: Type.STRING },
               grammar_note: { type: Type.STRING },
               example: { type: Type.STRING },
+              example_zh: { type: Type.STRING },
             },
-            required: ["word", "translation", "pos", "grammar_note", "example"],
+            required: ["word", "translation", "pos", "grammar_note", "example", "example_zh"],
           },
         },
       });
